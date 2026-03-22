@@ -3,21 +3,20 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Geometry Shape Drawer</title>
+  <title>Bangun Datar by Mathnology</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; }
-    body { font-family: 'Nunito', sans-serif; }
+    body { font-family: 'Nunito', sans-serif; box-sizing: border-box; }
 
     .shape-btn { transition: all 0.2s ease; }
     .shape-btn:hover { transform: translateY(-2px); }
     .shape-btn.active { ring: 2px; transform: scale(1.05); }
 
-    canvas { cursor: crosshair; }
+    canvas { cursor: crosshair; touch-action: none; } /* Mencegah layar ter-scroll saat menggambar di HP */
 
     .tool-section { animation: fadeUp 0.4s ease forwards; opacity: 0; }
     @keyframes fadeUp {
@@ -39,39 +38,49 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
   </style>
-  <style>body { box-sizing: border-box; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
  <body class="h-full">
-  <div id="app-wrapper" class="h-full w-full flex flex-col overflow-hidden" style="background: #0f172a;"><!-- Header -->
-   <header class="flex items-center justify-between px-4 py-3 flex-shrink-0" style="background: #1e293b; border-bottom: 2px solid #334155;">
-    <div class="flex items-center gap-3">
-     <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #6366f1;"><i data-lucide="pentagon" style="width:20px;height:20px;color:#e0e7ff;"></i>
+  <div id="app-wrapper" class="h-full w-full flex flex-col overflow-hidden" style="background: #0f172a;"><header class="flex items-center justify-between px-3 md:px-4 py-2 md:py-3 flex-shrink-0" style="background: #1e293b; border-bottom: 2px solid #334155;">
+    <div class="flex items-center gap-2 md:gap-3">
+     <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center" style="background: #6366f1;">
+       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e0e7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="md:w-[20px] md:h-[20px]"><polygon points="12 2 22 9 18 21 6 21 2 9"></polygon></svg>
      </div>
      <div>
-      <h1 id="app-title" class="text-lg font-extrabold leading-tight" style="color: #e0e7ff;">Bangun Datar</h1>
-      <p id="draw-prompt" class="text-xs" style="color: #94a3b8;">Pilih bentuk dan gambar di kanvas!</p>
+      <h1 id="app-title" class="text-base md:text-lg font-extrabold leading-tight" style="color: #e0e7ff; font-family: Nunito, sans-serif;">
+        Bangun Datar <span style="font-size: 0.65em; font-weight: 600; color: #a5b4fc; margin-left: 2px md:margin-left: 4px;">by Mathnology</span>
+      </h1>
+      <p id="draw-prompt" class="text-[10px] md:text-xs" style="color: #94a3b8; font-family: Nunito, sans-serif;">Pilih bentuk dan gambar di kanvas!</p>
      </div>
     </div>
-    <div class="flex items-center gap-2"><button id="btn-undo" onclick="undoAction()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Undo"> <i data-lucide="undo-2" style="width:18px;height:18px;"></i> </button> <button id="btn-clear" onclick="clearCanvas()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Hapus Semua"> <i data-lucide="trash-2" style="width:18px;height:18px;"></i> </button> <button onclick="downloadCanvas()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Download"> <i data-lucide="download" style="width:18px;height:18px;"></i> </button>
+    <div class="flex items-center gap-1 md:gap-2">
+      <button id="btn-undo" onclick="undoAction()" class="p-1.5 md:p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Undo"> <i data-lucide="undo-2" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i> </button> 
+      <button id="btn-clear" onclick="clearCanvas()" class="p-1.5 md:p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Hapus Semua"> <i data-lucide="trash-2" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i> </button> 
     </div>
-   </header><!-- Main Content -->
-   <div class="flex flex-1 overflow-hidden"><!-- Sidebar -->
-    <aside id="sidebar" class="flex-shrink-0 flex flex-col overflow-y-auto" style="width: 240px; background: #1e293b; border-right: 2px solid #334155;"><!-- Tabs -->
-     <div class="flex border-b" style="border-color: #334155;"><button id="tab-regular" class="tab-btn active-tab flex-1 py-2.5 text-xs text-center" style="color:#e0e7ff; border-bottom: 2px solid #6366f1;" onclick="switchTab('regular')">Beraturan</button> <button id="tab-irregular" class="tab-btn flex-1 py-2.5 text-xs text-center" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('irregular')">Tidak Beraturan</button> <button id="tab-options" class="tab-btn flex-1 py-2.5 text-xs text-center" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('options')">Opsi</button>
-     </div><!-- Regular shapes -->
+   </header>
+   
+   <div class="flex flex-1 flex-col md:flex-row overflow-hidden">
+    
+    <aside id="sidebar" class="flex-shrink-0 flex flex-col overflow-y-auto order-2 md:order-1 w-full h-[45vh] md:h-auto md:w-[240px] border-t-2 md:border-t-0 md:border-r-2 border-[#334155]" style="background: #1e293b;">
+     <div class="flex border-b" style="border-color: #334155;">
+       <button id="tab-regular" class="tab-btn active-tab flex-1 py-2.5 text-xs text-center" style="color:#e0e7ff; border-bottom: 2px solid #6366f1;" onclick="switchTab('regular')">Beraturan</button> 
+       <button id="tab-irregular" class="tab-btn flex-1 py-2.5 text-xs text-center leading-tight" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('irregular')">Tdk Beraturan</button> 
+       <button id="tab-options" class="tab-btn flex-1 py-2.5 text-xs text-center" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('options')">Opsi</button>
+     </div>
+     
      <div id="panel-regular" class="p-3 space-y-2 tool-section" style="animation-delay:0.05s;">
-      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Beraturan</p>
-      <div class="grid grid-cols-2 gap-2" id="regular-shapes"></div>
-     </div><!-- Irregular shapes -->
+      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Beraturan</p>
+      <div class="grid grid-cols-4 md:grid-cols-2 gap-2" id="regular-shapes"></div>
+     </div>
+     
      <div id="panel-irregular" class="p-3 space-y-2 tool-section hidden">
-      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Tidak Beraturan</p>
-      <div class="grid grid-cols-2 gap-2" id="irregular-shapes"></div>
-      <div id="freehand-info" class="hidden mt-3 p-2 rounded-lg text-xs" style="background:#312e81;color:#c7d2fe;"><i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <span>Klik titik-titik pada kanvas, lalu klik titik pertama atau tekan Enter untuk menutup bentuk.</span>
+      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Tidak Beraturan</p>
+      <div class="grid grid-cols-3 md:grid-cols-2 gap-2" id="irregular-shapes"></div>
+      <div id="freehand-info" class="hidden mt-3 p-2 rounded-lg text-xs" style="background:#312e81;color:#c7d2fe;"><i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <span>Klik titik pada kanvas, lalu klik titik pertama untuk menutup.</span>
       </div>
-     </div><!-- Options -->
+     </div>
+     
      <div id="panel-options" class="p-3 space-y-4 tool-section hidden">
-      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Pengaturan</p>
+      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Pengaturan</p>
       <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Warna Garis</label>
        <div class="flex flex-wrap gap-2" id="stroke-colors"></div>
       </div>
@@ -80,40 +89,36 @@
       </div>
       <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Ketebalan Garis</label> <input type="range" min="1" max="8" value="2" id="stroke-width" class="w-full" oninput="strokeWidth=+this.value">
       </div>
-      <div class="flex items-center gap-2"><input type="checkbox" id="show-labels" checked onchange="showLabels=this.checked; redrawAll()"> <label for="show-labels" class="text-xs" style="color:#94a3b8;">Tampilkan Label</label>
-      </div>
-      <div class="flex items-center gap-2"><input type="checkbox" id="show-grid" onchange="showGrid=this.checked; redrawAll()"> <label for="show-grid" class="text-xs" style="color:#94a3b8;">Tampilkan Grid</label>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="flex items-center gap-2"><input type="checkbox" id="show-labels" checked onchange="showLabels=this.checked; redrawAll()"> <label for="show-labels" class="text-xs" style="color:#94a3b8;">Tampilkan Label</label>
+        </div>
+        <div class="flex items-center gap-2"><input type="checkbox" id="show-grid" onchange="showGrid=this.checked; redrawAll()"> <label for="show-grid" class="text-xs" style="color:#94a3b8;">Tampilkan Grid</label>
+        </div>
+        <div class="flex items-center gap-2 col-span-2"><input type="checkbox" id="snap-grid" onchange="snapToGrid=this.checked;"> <label for="snap-grid" class="text-xs" style="color:#94a3b8;">Snap to Grid (Geometri Presisi)</label>
+        </div>
       </div>
      </div>
-    </aside><!-- Canvas Area -->
-    <main class="flex-1 relative overflow-hidden" style="background: #0f172a;">
-     <canvas id="draw-canvas" class="block w-full h-full"></canvas><!-- Toast -->
-     <div id="toast" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-semibold toast-msg" style="background:#6366f1;color:#e0e7ff;z-index:50;"></div><!-- Shape info overlay -->
-     <div id="shape-info" class="absolute top-3 right-3 px-3 py-2 rounded-lg text-xs font-semibold hidden" style="background:rgba(30,41,59,0.9);color:#e0e7ff;border:1px solid #334155;"><span id="shape-info-text"></span>
+    </aside>
+    
+    <main class="flex-1 relative overflow-hidden order-1 md:order-2" style="background: #0f172a;">
+     <canvas id="draw-canvas" class="block w-full h-full"></canvas>
+     <div id="toast" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-semibold toast-msg" style="background:#6366f1;color:#e0e7ff;z-index:50;"></div>
+     <div id="shape-info" class="absolute top-2 left-2 md:top-3 md:right-3 md:left-auto px-2 md:px-3 py-1 md:py-2 rounded-lg text-[10px] md:text-xs font-semibold hidden pointer-events-none" style="background:rgba(30,41,59,0.9);color:#e0e7ff;border:1px solid #334155;"><span id="shape-info-text"></span>
      </div>
     </main>
    </div>
   </div>
   <script>
     // ===== CONFIG & STATE =====
-    const defaultConfig = {
-      background_color: '#0f172a',
-      surface_color: '#1e293b',
-      text_color: '#e0e7ff',
-      primary_action_color: '#6366f1',
-      secondary_action_color: '#94a3b8',
-      font_family: 'Nunito',
-      font_size: 14,
-      app_title: 'Bangun Datar',
-      draw_prompt: 'Pilih bentuk dan gambar di kanvas!'
-    };
-
     let currentTool = null;
     let strokeColor = '#6366f1';
     let fillColor = 'transparent';
     let strokeWidth = 2;
     let showLabels = true;
     let showGrid = false;
+    let snapToGrid = false; 
+    const gridSize = 30; 
+
     let shapes = [];
     let undoStack = [];
     let isDrawing = false;
@@ -123,64 +128,67 @@
     const canvas = document.getElementById('draw-canvas');
     const ctx = canvas.getContext('2d');
 
-    // Regular shapes data
+    // Regular shapes data 
     const regularShapes = [
       { id: 'segitiga', name: 'Segitiga', icon: 'triangle', sides: 3 },
       { id: 'persegi', name: 'Persegi', icon: 'square', sides: 4 },
-      { id: 'persegi_panjang', name: 'Persegi Panjang', icon: 'rectangle-horizontal', sides: 0 },
+      { id: 'persegi_panjang', name: 'Persegi Pjg', icon: 'rectangle-horizontal', sides: 0 },
       { id: 'lingkaran', name: 'Lingkaran', icon: 'circle', sides: 0 },
-      { id: 'pentagon', name: 'Pentagon', icon: 'pentagon', sides: 5 },
+      { id: 'pentagon', name: 'Pentagon', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 9 18 21 6 21 2 9"></polygon></svg>', sides: 5 },
       { id: 'hexagon', name: 'Hexagon', icon: 'hexagon', sides: 6 },
       { id: 'heptagon', name: 'Heptagon', icon: 'octagon', sides: 7 },
       { id: 'octagon', name: 'Octagon', icon: 'octagon', sides: 8 },
-      { id: 'jajar_genjang', name: 'Jajar Genjang', icon: 'minus', sides: 0 },
+      { id: 'jajar_genjang', name: 'Jajar Genjang', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 17 9 7 21 7 16 17 4 17"></polygon></svg>', sides: 0 },
       { id: 'belah_ketupat', name: 'Belah Ketupat', icon: 'diamond', sides: 0 },
-      { id: 'trapesium', name: 'Trapesium', icon: 'chevrons-up', sides: 0 },
+      { id: 'trapesium', name: 'Trapesium', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h18l-4-10H7Z"/></svg>', sides: 0 },
       { id: 'ellips', name: 'Ellips', icon: 'circle', sides: 0 },
     ];
 
     const irregularShapes = [
-      { id: 'segitiga_bebas', name: 'Segitiga Bebas', icon: 'triangle', desc: 'Klik 3 titik' },
-      { id: 'segiempat_bebas', name: 'Segi Empat Bebas', icon: 'square', desc: 'Klik 4 titik' },
-      { id: 'polygon_bebas', name: 'Polygon Bebas', icon: 'pentagon', desc: 'Klik titik-titik' },
+      { id: 'segitiga_bebas', name: 'Segitiga', icon: 'triangle', desc: 'Klik 3 titik' },
+      { id: 'segiempat_bebas', name: 'Segi Empat', icon: 'square', desc: 'Klik 4 titik' },
+      { id: 'polygon_bebas', name: 'Polygon', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 9 18 21 6 21 2 9"></polygon></svg>', desc: 'Klik titik-titik' },
     ];
 
     const colorPalette = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4','#e0e7ff','#f1f5f9'];
 
     // ===== INIT UI =====
     function buildUI() {
-      // Regular shapes
       const regContainer = document.getElementById('regular-shapes');
       regContainer.innerHTML = '';
       regularShapes.forEach(s => {
         const btn = document.createElement('button');
-        btn.className = 'shape-btn flex flex-col items-center gap-1 p-2.5 rounded-lg text-center';
-        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent;';
+        btn.className = 'shape-btn flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-center';
+        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent; min-height: 64px;';
         btn.dataset.tool = s.id;
-        btn.innerHTML = `<i data-lucide="${s.icon}" style="width:22px;height:22px;"></i><span class="text-[10px] font-semibold leading-tight">${s.name}</span>`;
+        
+        const iconHTML = s.svg ? s.svg : `<i data-lucide="${s.icon}" style="width:20px;height:20px;"></i>`;
+        
+        btn.innerHTML = `${iconHTML}<span class="text-[9px] md:text-[10px] font-semibold leading-tight">${s.name}</span>`;
         btn.onclick = () => selectTool(s.id, btn);
         regContainer.appendChild(btn);
       });
 
-      // Irregular shapes
       const irrContainer = document.getElementById('irregular-shapes');
       irrContainer.innerHTML = '';
       irregularShapes.forEach(s => {
         const btn = document.createElement('button');
-        btn.className = 'shape-btn flex flex-col items-center gap-1 p-2.5 rounded-lg text-center';
-        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent;';
+        btn.className = 'shape-btn flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-center';
+        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent; min-height: 64px;';
         btn.dataset.tool = s.id;
-        btn.innerHTML = `<i data-lucide="${s.icon}" style="width:22px;height:22px;"></i><span class="text-[10px] font-semibold leading-tight">${s.name}</span>`;
+        
+        const iconHTML = s.svg ? s.svg : `<i data-lucide="${s.icon}" style="width:20px;height:20px;"></i>`;
+        
+        btn.innerHTML = `${iconHTML}<span class="text-[9px] md:text-[10px] font-semibold leading-tight">${s.name}</span>`;
         btn.onclick = () => selectTool(s.id, btn);
         irrContainer.appendChild(btn);
       });
 
-      // Colors
       const strokeContainer = document.getElementById('stroke-colors');
       strokeContainer.innerHTML = '';
       colorPalette.forEach(c => {
         const btn = document.createElement('button');
-        btn.className = 'w-7 h-7 rounded-full border-2';
+        btn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2';
         btn.style.cssText = `background:${c};border-color:${c === strokeColor ? '#e0e7ff' : 'transparent'};`;
         btn.onclick = () => { strokeColor = c; updateColorSelection(); };
         strokeContainer.appendChild(btn);
@@ -188,16 +196,15 @@
 
       const fillContainer = document.getElementById('fill-colors');
       fillContainer.innerHTML = '';
-      // Transparent option
       const trBtn = document.createElement('button');
-      trBtn.className = 'w-7 h-7 rounded-full border-2 relative overflow-hidden';
+      trBtn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2 relative overflow-hidden';
       trBtn.style.cssText = `background:repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50%/10px 10px;border-color:${fillColor === 'transparent' ? '#e0e7ff' : 'transparent'};`;
       trBtn.title = 'Transparan';
       trBtn.onclick = () => { fillColor = 'transparent'; updateColorSelection(); };
       fillContainer.appendChild(trBtn);
       colorPalette.forEach(c => {
         const btn = document.createElement('button');
-        btn.className = 'w-7 h-7 rounded-full border-2';
+        btn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2';
         btn.style.cssText = `background:${c};border-color:${c === fillColor ? '#e0e7ff' : 'transparent'};`;
         btn.onclick = () => { fillColor = c; updateColorSelection(); };
         fillContainer.appendChild(btn);
@@ -276,16 +283,24 @@
       return { x: t.clientX - rect.left, y: t.clientY - rect.top };
     }
 
+    function applySnap(pos) {
+      if (!snapToGrid) return pos;
+      return {
+        x: Math.round(pos.x / gridSize) * gridSize,
+        y: Math.round(pos.y / gridSize) * gridSize
+      };
+    }
+
     function drawGrid() {
       const w = canvas.width / window.devicePixelRatio;
       const h = canvas.height / window.devicePixelRatio;
       ctx.save();
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 0.5;
-      for (let x = 0; x < w; x += 30) {
+      for (let x = 0; x < w; x += gridSize) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       }
-      for (let y = 0; y < h; y += 30) {
+      for (let y = 0; y < h; y += gridSize) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
       ctx.restore();
@@ -297,7 +312,6 @@
       ctx.clearRect(0, 0, w, h);
       if (showGrid) drawGrid();
       shapes.forEach(s => drawShape(s));
-      // Draw polygon points in progress
       if (polygonPoints.length > 0) {
         ctx.save();
         ctx.fillStyle = '#6366f1';
@@ -451,16 +465,16 @@
 
     function drawLabel(x, y, text) {
       ctx.save();
-      ctx.font = '600 12px Nunito, sans-serif';
+      ctx.font = '600 10px Nunito, sans-serif'; // Mengecilkan font label sedikit agar rapi di HP
       ctx.fillStyle = '#e0e7ff';
       ctx.textAlign = 'center';
       const tw = ctx.measureText(text).width;
       ctx.fillStyle = 'rgba(30,41,59,0.85)';
       ctx.beginPath();
-      ctx.roundRect(x - tw / 2 - 6, y - 8, tw + 12, 18, 4);
+      ctx.roundRect(x - tw / 2 - 6, y - 8, tw + 12, 16, 4);
       ctx.fill();
       ctx.fillStyle = '#e0e7ff';
-      ctx.fillText(text, x, y + 5);
+      ctx.fillText(text, x, y + 3);
       ctx.restore();
     }
 
@@ -478,10 +492,11 @@
 
     function onStart(e) {
       if (!currentTool) { showToast('Pilih bentuk terlebih dahulu!'); return; }
-      const pos = getPos(e);
+      
+      let pos = getPos(e);
+      pos = applySnap(pos); 
 
       if (isIrregularTool()) {
-        // Check if clicking near first point to close
         if (polygonPoints.length >= 3) {
           const d = Math.sqrt((pos.x - polygonPoints[0].x) ** 2 + (pos.y - polygonPoints[0].y) ** 2);
           if (d < 15) {
@@ -508,9 +523,11 @@
 
     function onMove(e) {
       if (!isDrawing || isIrregularTool()) return;
-      const pos = getPos(e);
+      
+      let pos = getPos(e);
+      pos = applySnap(pos); 
+
       redrawAll();
-      // Preview shape
       const preview = {
         type: currentTool,
         sx: startX, sy: startY,
@@ -523,8 +540,10 @@
     function onEnd(e) {
       if (!isDrawing || isIrregularTool()) return;
       isDrawing = false;
-      const pos = getPos(e.changedTouches ? e.changedTouches[0] : e);
-      // Min size check
+      
+      let pos = getPos(e.changedTouches ? e.changedTouches[0] : e);
+      pos = applySnap(pos); 
+
       if (Math.abs(pos.x - startX) < 5 && Math.abs(pos.y - startY) < 5) return;
 
       const shape = {
@@ -581,14 +600,6 @@
       showToast('Kanvas dibersihkan');
     }
 
-    function downloadCanvas() {
-      const link = document.createElement('a');
-      link.download = 'bangun-datar.png';
-      link.href = canvas.toDataURL();
-      link.click();
-      showToast('Gambar diunduh!');
-    }
-
     function showToast(msg) {
       const toast = document.getElementById('toast');
       toast.textContent = msg;
@@ -603,68 +614,10 @@
       el.classList.remove('hidden');
     }
 
-    // ===== ELEMENT SDK =====
-    window.elementSdk.init({
-      defaultConfig,
-      onConfigChange: async (config) => {
-        const bg = config.background_color || defaultConfig.background_color;
-        const surface = config.surface_color || defaultConfig.surface_color;
-        const text = config.text_color || defaultConfig.text_color;
-        const primary = config.primary_action_color || defaultConfig.primary_action_color;
-        const secondary = config.secondary_action_color || defaultConfig.secondary_action_color;
-        const font = config.font_family || defaultConfig.font_family;
-        const fontSize = config.font_size || defaultConfig.font_size;
-
-        document.getElementById('app-wrapper').style.background = bg;
-        document.querySelector('header').style.background = surface;
-        document.getElementById('sidebar').style.background = surface;
-        document.querySelector('main').style.background = bg;
-
-        document.getElementById('app-title').style.color = text;
-        document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
-        document.getElementById('app-title').style.fontFamily = `${font}, Nunito, sans-serif`;
-        document.getElementById('app-title').style.fontSize = `${fontSize * 1.3}px`;
-
-        document.getElementById('draw-prompt').style.color = secondary;
-        document.getElementById('draw-prompt').textContent = config.draw_prompt || defaultConfig.draw_prompt;
-        document.getElementById('draw-prompt').style.fontFamily = `${font}, Nunito, sans-serif`;
-        document.getElementById('draw-prompt').style.fontSize = `${fontSize * 0.85}px`;
-
-        // Update tab active color
-        document.querySelectorAll('.tab-btn.active-tab').forEach(t => {
-          t.style.borderBottomColor = primary;
-        });
-
-        document.body.style.fontFamily = `${font}, Nunito, sans-serif`;
-      },
-      mapToCapabilities: (config) => ({
-        recolorables: [
-          { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
-          { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
-          { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
-          { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
-          { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } },
-        ],
-        borderables: [],
-        fontEditable: {
-          get: () => config.font_family || defaultConfig.font_family,
-          set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
-        },
-        fontSizeable: {
-          get: () => config.font_size || defaultConfig.font_size,
-          set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
-        }
-      }),
-      mapToEditPanelValues: (config) => new Map([
-        ['app_title', config.app_title || defaultConfig.app_title],
-        ['draw_prompt', config.draw_prompt || defaultConfig.draw_prompt]
-      ])
-    });
-
     // Init
     buildUI();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e06fdbbd27d0af4',t:'MTc3NDIwMTMyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ </body>
 </html>
