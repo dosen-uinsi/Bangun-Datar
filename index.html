@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geometry Shape Drawer</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Nunito', sans-serif; }
+
+    .shape-btn { transition: all 0.2s ease; }
+    .shape-btn:hover { transform: translateY(-2px); }
+    .shape-btn.active { ring: 2px; transform: scale(1.05); }
+
+    canvas { cursor: crosshair; }
+
+    .tool-section { animation: fadeUp 0.4s ease forwards; opacity: 0; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .toast-msg {
+      animation: toastIn 0.3s ease forwards;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tab-btn { transition: all 0.2s ease; }
+    .tab-btn.active-tab { font-weight: 700; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app-wrapper" class="h-full w-full flex flex-col overflow-hidden" style="background: #0f172a;"><!-- Header -->
+   <header class="flex items-center justify-between px-4 py-3 flex-shrink-0" style="background: #1e293b; border-bottom: 2px solid #334155;">
+    <div class="flex items-center gap-3">
+     <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background: #6366f1;"><i data-lucide="pentagon" style="width:20px;height:20px;color:#e0e7ff;"></i>
+     </div>
+     <div>
+      <h1 id="app-title" class="text-lg font-extrabold leading-tight" style="color: #e0e7ff;">Bangun Datar</h1>
+      <p id="draw-prompt" class="text-xs" style="color: #94a3b8;">Pilih bentuk dan gambar di kanvas!</p>
+     </div>
+    </div>
+    <div class="flex items-center gap-2"><button id="btn-undo" onclick="undoAction()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Undo"> <i data-lucide="undo-2" style="width:18px;height:18px;"></i> </button> <button id="btn-clear" onclick="clearCanvas()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Hapus Semua"> <i data-lucide="trash-2" style="width:18px;height:18px;"></i> </button> <button onclick="downloadCanvas()" class="p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Download"> <i data-lucide="download" style="width:18px;height:18px;"></i> </button>
+    </div>
+   </header><!-- Main Content -->
+   <div class="flex flex-1 overflow-hidden"><!-- Sidebar -->
+    <aside id="sidebar" class="flex-shrink-0 flex flex-col overflow-y-auto" style="width: 240px; background: #1e293b; border-right: 2px solid #334155;"><!-- Tabs -->
+     <div class="flex border-b" style="border-color: #334155;"><button id="tab-regular" class="tab-btn active-tab flex-1 py-2.5 text-xs text-center" style="color:#e0e7ff; border-bottom: 2px solid #6366f1;" onclick="switchTab('regular')">Beraturan</button> <button id="tab-irregular" class="tab-btn flex-1 py-2.5 text-xs text-center" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('irregular')">Tidak Beraturan</button> <button id="tab-options" class="tab-btn flex-1 py-2.5 text-xs text-center" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('options')">Opsi</button>
+     </div><!-- Regular shapes -->
+     <div id="panel-regular" class="p-3 space-y-2 tool-section" style="animation-delay:0.05s;">
+      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Beraturan</p>
+      <div class="grid grid-cols-2 gap-2" id="regular-shapes"></div>
+     </div><!-- Irregular shapes -->
+     <div id="panel-irregular" class="p-3 space-y-2 tool-section hidden">
+      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Tidak Beraturan</p>
+      <div class="grid grid-cols-2 gap-2" id="irregular-shapes"></div>
+      <div id="freehand-info" class="hidden mt-3 p-2 rounded-lg text-xs" style="background:#312e81;color:#c7d2fe;"><i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <span>Klik titik-titik pada kanvas, lalu klik titik pertama atau tekan Enter untuk menutup bentuk.</span>
+      </div>
+     </div><!-- Options -->
+     <div id="panel-options" class="p-3 space-y-4 tool-section hidden">
+      <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Pengaturan</p>
+      <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Warna Garis</label>
+       <div class="flex flex-wrap gap-2" id="stroke-colors"></div>
+      </div>
+      <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Warna Isi</label>
+       <div class="flex flex-wrap gap-2" id="fill-colors"></div>
+      </div>
+      <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Ketebalan Garis</label> <input type="range" min="1" max="8" value="2" id="stroke-width" class="w-full" oninput="strokeWidth=+this.value">
+      </div>
+      <div class="flex items-center gap-2"><input type="checkbox" id="show-labels" checked onchange="showLabels=this.checked; redrawAll()"> <label for="show-labels" class="text-xs" style="color:#94a3b8;">Tampilkan Label</label>
+      </div>
+      <div class="flex items-center gap-2"><input type="checkbox" id="show-grid" onchange="showGrid=this.checked; redrawAll()"> <label for="show-grid" class="text-xs" style="color:#94a3b8;">Tampilkan Grid</label>
+      </div>
+     </div>
+    </aside><!-- Canvas Area -->
+    <main class="flex-1 relative overflow-hidden" style="background: #0f172a;">
+     <canvas id="draw-canvas" class="block w-full h-full"></canvas><!-- Toast -->
+     <div id="toast" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-semibold toast-msg" style="background:#6366f1;color:#e0e7ff;z-index:50;"></div><!-- Shape info overlay -->
+     <div id="shape-info" class="absolute top-3 right-3 px-3 py-2 rounded-lg text-xs font-semibold hidden" style="background:rgba(30,41,59,0.9);color:#e0e7ff;border:1px solid #334155;"><span id="shape-info-text"></span>
+     </div>
+    </main>
+   </div>
+  </div>
+  <script>
+    // ===== CONFIG & STATE =====
+    const defaultConfig = {
+      background_color: '#0f172a',
+      surface_color: '#1e293b',
+      text_color: '#e0e7ff',
+      primary_action_color: '#6366f1',
+      secondary_action_color: '#94a3b8',
+      font_family: 'Nunito',
+      font_size: 14,
+      app_title: 'Bangun Datar',
+      draw_prompt: 'Pilih bentuk dan gambar di kanvas!'
+    };
+
+    let currentTool = null;
+    let strokeColor = '#6366f1';
+    let fillColor = 'transparent';
+    let strokeWidth = 2;
+    let showLabels = true;
+    let showGrid = false;
+    let shapes = [];
+    let undoStack = [];
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    let polygonPoints = [];
+
+    const canvas = document.getElementById('draw-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Regular shapes data
+    const regularShapes = [
+      { id: 'segitiga', name: 'Segitiga', icon: 'triangle', sides: 3 },
+      { id: 'persegi', name: 'Persegi', icon: 'square', sides: 4 },
+      { id: 'persegi_panjang', name: 'Persegi Panjang', icon: 'rectangle-horizontal', sides: 0 },
+      { id: 'lingkaran', name: 'Lingkaran', icon: 'circle', sides: 0 },
+      { id: 'pentagon', name: 'Pentagon', icon: 'pentagon', sides: 5 },
+      { id: 'hexagon', name: 'Hexagon', icon: 'hexagon', sides: 6 },
+      { id: 'heptagon', name: 'Heptagon', icon: 'octagon', sides: 7 },
+      { id: 'octagon', name: 'Octagon', icon: 'octagon', sides: 8 },
+      { id: 'jajar_genjang', name: 'Jajar Genjang', icon: 'minus', sides: 0 },
+      { id: 'belah_ketupat', name: 'Belah Ketupat', icon: 'diamond', sides: 0 },
+      { id: 'trapesium', name: 'Trapesium', icon: 'chevrons-up', sides: 0 },
+      { id: 'ellips', name: 'Ellips', icon: 'circle', sides: 0 },
+    ];
+
+    const irregularShapes = [
+      { id: 'segitiga_bebas', name: 'Segitiga Bebas', icon: 'triangle', desc: 'Klik 3 titik' },
+      { id: 'segiempat_bebas', name: 'Segi Empat Bebas', icon: 'square', desc: 'Klik 4 titik' },
+      { id: 'polygon_bebas', name: 'Polygon Bebas', icon: 'pentagon', desc: 'Klik titik-titik' },
+    ];
+
+    const colorPalette = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4','#e0e7ff','#f1f5f9'];
+
+    // ===== INIT UI =====
+    function buildUI() {
+      // Regular shapes
+      const regContainer = document.getElementById('regular-shapes');
+      regContainer.innerHTML = '';
+      regularShapes.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'shape-btn flex flex-col items-center gap-1 p-2.5 rounded-lg text-center';
+        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent;';
+        btn.dataset.tool = s.id;
+        btn.innerHTML = `<i data-lucide="${s.icon}" style="width:22px;height:22px;"></i><span class="text-[10px] font-semibold leading-tight">${s.name}</span>`;
+        btn.onclick = () => selectTool(s.id, btn);
+        regContainer.appendChild(btn);
+      });
+
+      // Irregular shapes
+      const irrContainer = document.getElementById('irregular-shapes');
+      irrContainer.innerHTML = '';
+      irregularShapes.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'shape-btn flex flex-col items-center gap-1 p-2.5 rounded-lg text-center';
+        btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent;';
+        btn.dataset.tool = s.id;
+        btn.innerHTML = `<i data-lucide="${s.icon}" style="width:22px;height:22px;"></i><span class="text-[10px] font-semibold leading-tight">${s.name}</span>`;
+        btn.onclick = () => selectTool(s.id, btn);
+        irrContainer.appendChild(btn);
+      });
+
+      // Colors
+      const strokeContainer = document.getElementById('stroke-colors');
+      strokeContainer.innerHTML = '';
+      colorPalette.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'w-7 h-7 rounded-full border-2';
+        btn.style.cssText = `background:${c};border-color:${c === strokeColor ? '#e0e7ff' : 'transparent'};`;
+        btn.onclick = () => { strokeColor = c; updateColorSelection(); };
+        strokeContainer.appendChild(btn);
+      });
+
+      const fillContainer = document.getElementById('fill-colors');
+      fillContainer.innerHTML = '';
+      // Transparent option
+      const trBtn = document.createElement('button');
+      trBtn.className = 'w-7 h-7 rounded-full border-2 relative overflow-hidden';
+      trBtn.style.cssText = `background:repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50%/10px 10px;border-color:${fillColor === 'transparent' ? '#e0e7ff' : 'transparent'};`;
+      trBtn.title = 'Transparan';
+      trBtn.onclick = () => { fillColor = 'transparent'; updateColorSelection(); };
+      fillContainer.appendChild(trBtn);
+      colorPalette.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'w-7 h-7 rounded-full border-2';
+        btn.style.cssText = `background:${c};border-color:${c === fillColor ? '#e0e7ff' : 'transparent'};`;
+        btn.onclick = () => { fillColor = c; updateColorSelection(); };
+        fillContainer.appendChild(btn);
+      });
+
+      lucide.createIcons();
+    }
+
+    function updateColorSelection() {
+      const strokeBtns = document.getElementById('stroke-colors').children;
+      colorPalette.forEach((c, i) => {
+        strokeBtns[i].style.borderColor = c === strokeColor ? '#e0e7ff' : 'transparent';
+      });
+      const fillBtns = document.getElementById('fill-colors').children;
+      fillBtns[0].style.borderColor = fillColor === 'transparent' ? '#e0e7ff' : 'transparent';
+      colorPalette.forEach((c, i) => {
+        fillBtns[i + 1].style.borderColor = c === fillColor ? '#e0e7ff' : 'transparent';
+      });
+    }
+
+    function selectTool(toolId, btn) {
+      currentTool = toolId;
+      polygonPoints = [];
+      document.querySelectorAll('.shape-btn').forEach(b => {
+        b.style.borderColor = 'transparent';
+        b.style.background = '#334155';
+      });
+      btn.style.borderColor = '#6366f1';
+      btn.style.background = '#3730a3';
+
+      const info = document.getElementById('freehand-info');
+      if (['segitiga_bebas','segiempat_bebas','polygon_bebas'].includes(toolId)) {
+        info.classList.remove('hidden');
+      } else {
+        info.classList.add('hidden');
+      }
+
+      const nameMap = {};
+      [...regularShapes, ...irregularShapes].forEach(s => nameMap[s.id] = s.name);
+      showShapeInfo(nameMap[toolId] || toolId);
+      redrawAll();
+    }
+
+    function switchTab(tab) {
+      ['regular','irregular','options'].forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        const tabBtn = document.getElementById('tab-' + t);
+        if (t === tab) {
+          panel.classList.remove('hidden');
+          tabBtn.style.color = '#e0e7ff';
+          tabBtn.style.borderBottomColor = '#6366f1';
+          tabBtn.classList.add('active-tab');
+        } else {
+          panel.classList.add('hidden');
+          tabBtn.style.color = '#64748b';
+          tabBtn.style.borderBottomColor = 'transparent';
+          tabBtn.classList.remove('active-tab');
+        }
+      });
+    }
+
+    // ===== CANVAS =====
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+      redrawAll();
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+    }
+
+    function drawGrid() {
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+      ctx.save();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < w; x += 30) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function redrawAll() {
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+      ctx.clearRect(0, 0, w, h);
+      if (showGrid) drawGrid();
+      shapes.forEach(s => drawShape(s));
+      // Draw polygon points in progress
+      if (polygonPoints.length > 0) {
+        ctx.save();
+        ctx.fillStyle = '#6366f1';
+        polygonPoints.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        if (polygonPoints.length > 1) {
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+          for (let i = 1; i < polygonPoints.length; i++) {
+            ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawShape(s) {
+      ctx.save();
+      ctx.strokeStyle = s.strokeColor;
+      ctx.lineWidth = s.strokeWidth;
+      ctx.lineJoin = 'round';
+
+      if (s.fillColor && s.fillColor !== 'transparent') {
+        ctx.fillStyle = s.fillColor;
+      }
+
+      if (s.type === 'lingkaran') {
+        const r = Math.sqrt((s.ex - s.sx) ** 2 + (s.ey - s.sy) ** 2) / 2;
+        const cx = (s.sx + s.ex) / 2;
+        const cy = (s.sy + s.ey) / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        if (s.fillColor !== 'transparent') ctx.fill();
+        ctx.stroke();
+        if (showLabels) drawLabel(cx, cy - r - 10, s.label || 'Lingkaran');
+      } else if (s.type === 'ellips') {
+        const cx = (s.sx + s.ex) / 2;
+        const cy = (s.sy + s.ey) / 2;
+        const rx = Math.abs(s.ex - s.sx) / 2;
+        const ry = Math.abs(s.ey - s.sy) / 2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        if (s.fillColor !== 'transparent') ctx.fill();
+        ctx.stroke();
+        if (showLabels) drawLabel(cx, cy - ry - 10, s.label || 'Ellips');
+      } else if (s.type === 'persegi') {
+        const size = Math.max(Math.abs(s.ex - s.sx), Math.abs(s.ey - s.sy));
+        const x = s.sx;
+        const y = s.sy;
+        ctx.beginPath();
+        ctx.rect(x, y, size * Math.sign(s.ex - s.sx), size * Math.sign(s.ey - s.sy));
+        if (s.fillColor !== 'transparent') ctx.fill();
+        ctx.stroke();
+        if (showLabels) drawLabel(x + size * Math.sign(s.ex - s.sx) / 2, y - 10, 'Persegi');
+      } else if (s.type === 'persegi_panjang') {
+        const w = s.ex - s.sx;
+        const h = s.ey - s.sy;
+        ctx.beginPath();
+        ctx.rect(s.sx, s.sy, w, h);
+        if (s.fillColor !== 'transparent') ctx.fill();
+        ctx.stroke();
+        if (showLabels) drawLabel(s.sx + w / 2, s.sy - 10, 'Persegi Panjang');
+      } else if (s.type === 'segitiga') {
+        const cx = (s.sx + s.ex) / 2;
+        const pts = regularPolygonPoints(cx, (s.sy + s.ey) / 2, Math.abs(s.ex - s.sx) / 2, 3, -Math.PI / 2);
+        drawPoly(pts, s);
+        if (showLabels) drawLabel(cx, Math.min(...pts.map(p => p.y)) - 10, 'Segitiga');
+      } else if (s.type === 'jajar_genjang') {
+        const w = s.ex - s.sx;
+        const h = s.ey - s.sy;
+        const offset = w * 0.2;
+        const pts = [
+          { x: s.sx + offset, y: s.sy },
+          { x: s.ex, y: s.sy },
+          { x: s.ex - offset, y: s.ey },
+          { x: s.sx, y: s.ey }
+        ];
+        drawPoly(pts, s);
+        if (showLabels) drawLabel((s.sx + s.ex) / 2, s.sy - 10, 'Jajar Genjang');
+      } else if (s.type === 'belah_ketupat') {
+        const cx = (s.sx + s.ex) / 2;
+        const cy = (s.sy + s.ey) / 2;
+        const hw = Math.abs(s.ex - s.sx) / 2;
+        const hh = Math.abs(s.ey - s.sy) / 2;
+        const pts = [
+          { x: cx, y: cy - hh },
+          { x: cx + hw, y: cy },
+          { x: cx, y: cy + hh },
+          { x: cx - hw, y: cy }
+        ];
+        drawPoly(pts, s);
+        if (showLabels) drawLabel(cx, cy - hh - 10, 'Belah Ketupat');
+      } else if (s.type === 'trapesium') {
+        const w = s.ex - s.sx;
+        const h = s.ey - s.sy;
+        const topInset = Math.abs(w) * 0.2;
+        const pts = [
+          { x: s.sx + topInset, y: s.sy },
+          { x: s.ex - topInset, y: s.sy },
+          { x: s.ex, y: s.ey },
+          { x: s.sx, y: s.ey }
+        ];
+        drawPoly(pts, s);
+        if (showLabels) drawLabel((s.sx + s.ex) / 2, s.sy - 10, 'Trapesium');
+      } else if (['pentagon','hexagon','heptagon','octagon'].includes(s.type)) {
+        const sidesMap = { pentagon: 5, hexagon: 6, heptagon: 7, octagon: 8 };
+        const n = sidesMap[s.type];
+        const cx = (s.sx + s.ex) / 2;
+        const cy = (s.sy + s.ey) / 2;
+        const r = Math.min(Math.abs(s.ex - s.sx), Math.abs(s.ey - s.sy)) / 2;
+        const pts = regularPolygonPoints(cx, cy, r, n, -Math.PI / 2);
+        drawPoly(pts, s);
+        if (showLabels) drawLabel(cx, Math.min(...pts.map(p => p.y)) - 10, s.type.charAt(0).toUpperCase() + s.type.slice(1));
+      } else if (s.type === 'polygon') {
+        drawPoly(s.points, s);
+        if (showLabels && s.points.length > 0) {
+          const cx = s.points.reduce((a, p) => a + p.x, 0) / s.points.length;
+          const minY = Math.min(...s.points.map(p => p.y));
+          drawLabel(cx, minY - 10, s.label || 'Polygon');
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawPoly(pts, s) {
+      if (pts.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      if (s.fillColor !== 'transparent') ctx.fill();
+      ctx.stroke();
+    }
+
+    function regularPolygonPoints(cx, cy, r, sides, startAngle) {
+      const pts = [];
+      for (let i = 0; i < sides; i++) {
+        const a = startAngle + (2 * Math.PI / sides) * i;
+        pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+      }
+      return pts;
+    }
+
+    function drawLabel(x, y, text) {
+      ctx.save();
+      ctx.font = '600 12px Nunito, sans-serif';
+      ctx.fillStyle = '#e0e7ff';
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(30,41,59,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(x - tw / 2 - 6, y - 8, tw + 12, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = '#e0e7ff';
+      ctx.fillText(text, x, y + 5);
+      ctx.restore();
+    }
+
+    // ===== EVENT HANDLERS =====
+    function isIrregularTool() {
+      return ['segitiga_bebas','segiempat_bebas','polygon_bebas'].includes(currentTool);
+    }
+
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); onStart(e); }, { passive: false });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
+    canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(e); }, { passive: false });
+
+    function onStart(e) {
+      if (!currentTool) { showToast('Pilih bentuk terlebih dahulu!'); return; }
+      const pos = getPos(e);
+
+      if (isIrregularTool()) {
+        // Check if clicking near first point to close
+        if (polygonPoints.length >= 3) {
+          const d = Math.sqrt((pos.x - polygonPoints[0].x) ** 2 + (pos.y - polygonPoints[0].y) ** 2);
+          if (d < 15) {
+            closePolygon();
+            return;
+          }
+        }
+
+        const maxPts = currentTool === 'segitiga_bebas' ? 3 : currentTool === 'segiempat_bebas' ? 4 : 999;
+        if (polygonPoints.length < maxPts) {
+          polygonPoints.push(pos);
+          redrawAll();
+          if (polygonPoints.length === maxPts && currentTool !== 'polygon_bebas') {
+            closePolygon();
+          }
+        }
+        return;
+      }
+
+      isDrawing = true;
+      startX = pos.x;
+      startY = pos.y;
+    }
+
+    function onMove(e) {
+      if (!isDrawing || isIrregularTool()) return;
+      const pos = getPos(e);
+      redrawAll();
+      // Preview shape
+      const preview = {
+        type: currentTool,
+        sx: startX, sy: startY,
+        ex: pos.x, ey: pos.y,
+        strokeColor, fillColor, strokeWidth
+      };
+      drawShape(preview);
+    }
+
+    function onEnd(e) {
+      if (!isDrawing || isIrregularTool()) return;
+      isDrawing = false;
+      const pos = getPos(e.changedTouches ? e.changedTouches[0] : e);
+      // Min size check
+      if (Math.abs(pos.x - startX) < 5 && Math.abs(pos.y - startY) < 5) return;
+
+      const shape = {
+        type: currentTool,
+        sx: startX, sy: startY,
+        ex: pos.x, ey: pos.y,
+        strokeColor, fillColor, strokeWidth
+      };
+      undoStack.push([...shapes]);
+      shapes.push(shape);
+      redrawAll();
+    }
+
+    function closePolygon() {
+      if (polygonPoints.length < 3) return;
+      const labelMap = { segitiga_bebas: 'Segitiga Bebas', segiempat_bebas: 'Segi Empat Bebas', polygon_bebas: 'Polygon Bebas' };
+      const shape = {
+        type: 'polygon',
+        points: [...polygonPoints],
+        strokeColor, fillColor, strokeWidth,
+        label: labelMap[currentTool] || 'Polygon'
+      };
+      undoStack.push([...shapes]);
+      shapes.push(shape);
+      polygonPoints = [];
+      redrawAll();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && isIrregularTool() && polygonPoints.length >= 3) {
+        closePolygon();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undoAction();
+      }
+    });
+
+    function undoAction() {
+      if (undoStack.length > 0) {
+        shapes = undoStack.pop();
+        polygonPoints = [];
+        redrawAll();
+        showToast('Undo berhasil');
+      }
+    }
+
+    function clearCanvas() {
+      if (shapes.length === 0) return;
+      undoStack.push([...shapes]);
+      shapes = [];
+      polygonPoints = [];
+      redrawAll();
+      showToast('Kanvas dibersihkan');
+    }
+
+    function downloadCanvas() {
+      const link = document.createElement('a');
+      link.download = 'bangun-datar.png';
+      link.href = canvas.toDataURL();
+      link.click();
+      showToast('Gambar diunduh!');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => toast.classList.add('hidden'), 2000);
+    }
+
+    function showShapeInfo(name) {
+      const el = document.getElementById('shape-info');
+      document.getElementById('shape-info-text').textContent = 'Mode: ' + name;
+      el.classList.remove('hidden');
+    }
+
+    // ===== ELEMENT SDK =====
+    window.elementSdk.init({
+      defaultConfig,
+      onConfigChange: async (config) => {
+        const bg = config.background_color || defaultConfig.background_color;
+        const surface = config.surface_color || defaultConfig.surface_color;
+        const text = config.text_color || defaultConfig.text_color;
+        const primary = config.primary_action_color || defaultConfig.primary_action_color;
+        const secondary = config.secondary_action_color || defaultConfig.secondary_action_color;
+        const font = config.font_family || defaultConfig.font_family;
+        const fontSize = config.font_size || defaultConfig.font_size;
+
+        document.getElementById('app-wrapper').style.background = bg;
+        document.querySelector('header').style.background = surface;
+        document.getElementById('sidebar').style.background = surface;
+        document.querySelector('main').style.background = bg;
+
+        document.getElementById('app-title').style.color = text;
+        document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+        document.getElementById('app-title').style.fontFamily = `${font}, Nunito, sans-serif`;
+        document.getElementById('app-title').style.fontSize = `${fontSize * 1.3}px`;
+
+        document.getElementById('draw-prompt').style.color = secondary;
+        document.getElementById('draw-prompt').textContent = config.draw_prompt || defaultConfig.draw_prompt;
+        document.getElementById('draw-prompt').style.fontFamily = `${font}, Nunito, sans-serif`;
+        document.getElementById('draw-prompt').style.fontSize = `${fontSize * 0.85}px`;
+
+        // Update tab active color
+        document.querySelectorAll('.tab-btn.active-tab').forEach(t => {
+          t.style.borderBottomColor = primary;
+        });
+
+        document.body.style.fontFamily = `${font}, Nunito, sans-serif`;
+      },
+      mapToCapabilities: (config) => ({
+        recolorables: [
+          { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+          { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+          { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+          { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+          { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } },
+        ],
+        borderables: [],
+        fontEditable: {
+          get: () => config.font_family || defaultConfig.font_family,
+          set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+        },
+        fontSizeable: {
+          get: () => config.font_size || defaultConfig.font_size,
+          set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+        }
+      }),
+      mapToEditPanelValues: (config) => new Map([
+        ['app_title', config.app_title || defaultConfig.app_title],
+        ['draw_prompt', config.draw_prompt || defaultConfig.draw_prompt]
+      ])
+    });
+
+    // Init
+    buildUI();
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e06fdbbd27d0af4',t:'MTc3NDIwMTMyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
