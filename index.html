@@ -16,7 +16,7 @@
     .shape-btn:hover { transform: translateY(-2px); }
     .shape-btn.active { ring: 2px; transform: scale(1.05); }
 
-    canvas { cursor: crosshair; touch-action: none; } /* Mencegah layar ter-scroll saat menggambar di HP */
+    canvas { touch-action: none; outline: none; -webkit-tap-highlight-color: transparent; } 
 
     .tool-section { animation: fadeUp 0.4s ease forwards; opacity: 0; }
     @keyframes fadeUp {
@@ -53,7 +53,11 @@
      </div>
     </div>
     <div class="flex items-center gap-1 md:gap-2">
-      <button id="btn-undo" onclick="undoAction()" class="p-1.5 md:p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Undo"> <i data-lucide="undo-2" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i> </button> 
+      <button id="btn-delete-sel" onclick="deleteSelected()" class="hidden p-1.5 md:p-2 rounded-lg hover:opacity-80 flex items-center gap-1" style="background:#ef4444;color:#ffffff;" title="Hapus Bangun Terpilih"> 
+        <i data-lucide="eraser" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i>
+        <span class="text-[10px] md:text-xs font-bold hidden md:inline">Hapus</span>
+      </button> 
+      <button id="btn-undo" onclick="undoAction()" class="p-1.5 md:p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Undo (Ctrl+Z)"> <i data-lucide="undo-2" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i> </button> 
       <button id="btn-clear" onclick="clearCanvas()" class="p-1.5 md:p-2 rounded-lg hover:opacity-80" style="background:#334155;color:#94a3b8;" title="Hapus Semua"> <i data-lucide="trash-2" class="w-4 h-4 md:w-[18px] md:h-[18px]"></i> </button> 
     </div>
    </header>
@@ -61,6 +65,13 @@
    <div class="flex flex-1 flex-col md:flex-row overflow-hidden">
     
     <aside id="sidebar" class="flex-shrink-0 flex flex-col overflow-y-auto order-2 md:order-1 w-full h-[45vh] md:h-auto md:w-[240px] border-t-2 md:border-t-0 md:border-r-2 border-[#334155]" style="background: #1e293b;">
+     
+     <div class="p-3 border-b border-[#334155]">
+       <button id="tool-select" class="shape-btn flex items-center justify-center gap-2 p-2 w-full rounded-lg text-center font-bold" style="background:#334155;color:#e0e7ff;border:2px solid transparent;" onclick="selectTool('select', this)">
+         <i data-lucide="mouse-pointer-2" style="width:18px;height:18px;"></i> Pilih / Edit
+       </button>
+     </div>
+
      <div class="flex border-b" style="border-color: #334155;">
        <button id="tab-regular" class="tab-btn active-tab flex-1 py-2.5 text-xs text-center" style="color:#e0e7ff; border-bottom: 2px solid #6366f1;" onclick="switchTab('regular')">Beraturan</button> 
        <button id="tab-irregular" class="tab-btn flex-1 py-2.5 text-xs text-center leading-tight" style="color:#64748b; border-bottom: 2px solid transparent;" onclick="switchTab('irregular')">Tdk Beraturan</button> 
@@ -68,40 +79,40 @@
      </div>
      
      <div id="panel-regular" class="p-3 space-y-2 tool-section" style="animation-delay:0.05s;">
-      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Beraturan</p>
       <div class="grid grid-cols-4 md:grid-cols-2 gap-2" id="regular-shapes"></div>
      </div>
      
      <div id="panel-irregular" class="p-3 space-y-2 tool-section hidden">
-      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Bentuk Tidak Beraturan</p>
       <div class="grid grid-cols-3 md:grid-cols-2 gap-2" id="irregular-shapes"></div>
       <div id="freehand-info" class="hidden mt-3 p-2 rounded-lg text-xs" style="background:#312e81;color:#c7d2fe;"><i data-lucide="info" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> <span>Klik titik pada kanvas, lalu klik titik pertama untuk menutup.</span>
       </div>
      </div>
      
      <div id="panel-options" class="p-3 space-y-4 tool-section hidden">
-      <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider mb-2" style="color:#64748b;">Pengaturan</p>
       <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Warna Garis</label>
        <div class="flex flex-wrap gap-2" id="stroke-colors"></div>
       </div>
       <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Warna Isi</label>
        <div class="flex flex-wrap gap-2" id="fill-colors"></div>
       </div>
-      <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Ketebalan Garis</label> <input type="range" min="1" max="8" value="2" id="stroke-width" class="w-full" oninput="strokeWidth=+this.value">
+      <div><label class="text-xs font-semibold block mb-1" style="color:#94a3b8;">Ketebalan Garis</label> <input type="range" min="1" max="8" value="2" id="stroke-width" class="w-full" oninput="changeStrokeWidth(this.value)">
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div class="flex items-center gap-2"><input type="checkbox" id="show-labels" checked onchange="showLabels=this.checked; redrawAll()"> <label for="show-labels" class="text-xs" style="color:#94a3b8;">Tampilkan Label</label>
         </div>
         <div class="flex items-center gap-2"><input type="checkbox" id="show-grid" onchange="showGrid=this.checked; redrawAll()"> <label for="show-grid" class="text-xs" style="color:#94a3b8;">Tampilkan Grid</label>
         </div>
-        <div class="flex items-center gap-2 col-span-2"><input type="checkbox" id="snap-grid" onchange="snapToGrid=this.checked;"> <label for="snap-grid" class="text-xs" style="color:#94a3b8;">Snap to Grid (Geometri Presisi)</label>
+        <div class="flex items-center gap-2 col-span-2"><input type="checkbox" id="snap-grid" onchange="snapToGrid=this.checked;"> <label for="snap-grid" class="text-xs" style="color:#94a3b8;">Snap to Grid (Presisi)</label>
         </div>
+      </div>
+      <div class="mt-3 p-2 rounded-lg text-xs" style="background:#1e293b; border:1px dashed #475569; color:#94a3b8;">
+        💡 <b>Tips Edit:</b> Gunakan alat <b>Pilih / Edit</b> untuk menggeser, mengubah ukuran, atau mewarnai ulang bangun yang sudah dibuat.
       </div>
      </div>
     </aside>
     
     <main class="flex-1 relative overflow-hidden order-1 md:order-2" style="background: #0f172a;">
-     <canvas id="draw-canvas" class="block w-full h-full"></canvas>
+     <canvas id="draw-canvas" class="block w-full h-full" tabindex="0"></canvas>
      <div id="toast" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm font-semibold toast-msg" style="background:#6366f1;color:#e0e7ff;z-index:50;"></div>
      <div id="shape-info" class="absolute top-2 left-2 md:top-3 md:right-3 md:left-auto px-2 md:px-3 py-1 md:py-2 rounded-lg text-[10px] md:text-xs font-semibold hidden pointer-events-none" style="background:rgba(30,41,59,0.9);color:#e0e7ff;border:1px solid #334155;"><span id="shape-info-text"></span>
      </div>
@@ -124,6 +135,12 @@
     let isDrawing = false;
     let startX = 0, startY = 0;
     let polygonPoints = [];
+
+    // State Interaksi (Pilih, Geser, Resize)
+    let selectedShapeIndex = -1;
+    let interactAction = null; 
+    let dragStartPos = {x: 0, y: 0};
+    let dragOrigShape = null;
 
     const canvas = document.getElementById('draw-canvas');
     const ctx = canvas.getContext('2d');
@@ -152,6 +169,32 @@
 
     const colorPalette = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#8b5cf6','#06b6d4','#e0e7ff','#f1f5f9'];
 
+    function saveUndoState() {
+      undoStack.push(JSON.parse(JSON.stringify(shapes)));
+    }
+
+    // Memperbarui visibilitas tombol Hapus
+    function updateDeleteButton() {
+      const btn = document.getElementById('btn-delete-sel');
+      if (currentTool === 'select' && selectedShapeIndex !== -1) {
+        btn.classList.remove('hidden');
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+
+    // Fungsi Hapus Bangun Terpilih
+    function deleteSelected() {
+      if (currentTool === 'select' && selectedShapeIndex !== -1) {
+        saveUndoState();
+        shapes.splice(selectedShapeIndex, 1);
+        selectedShapeIndex = -1;
+        updateDeleteButton();
+        redrawAll();
+        showToast('Bangun dihapus');
+      }
+    }
+
     // ===== INIT UI =====
     function buildUI() {
       const regContainer = document.getElementById('regular-shapes');
@@ -161,9 +204,7 @@
         btn.className = 'shape-btn flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-center';
         btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent; min-height: 64px;';
         btn.dataset.tool = s.id;
-        
         const iconHTML = s.svg ? s.svg : `<i data-lucide="${s.icon}" style="width:20px;height:20px;"></i>`;
-        
         btn.innerHTML = `${iconHTML}<span class="text-[9px] md:text-[10px] font-semibold leading-tight">${s.name}</span>`;
         btn.onclick = () => selectTool(s.id, btn);
         regContainer.appendChild(btn);
@@ -176,9 +217,7 @@
         btn.className = 'shape-btn flex flex-col items-center justify-center gap-1 p-2 rounded-lg text-center';
         btn.style.cssText = 'background:#334155;color:#e0e7ff;border:2px solid transparent; min-height: 64px;';
         btn.dataset.tool = s.id;
-        
         const iconHTML = s.svg ? s.svg : `<i data-lucide="${s.icon}" style="width:20px;height:20px;"></i>`;
-        
         btn.innerHTML = `${iconHTML}<span class="text-[9px] md:text-[10px] font-semibold leading-tight">${s.name}</span>`;
         btn.onclick = () => selectTool(s.id, btn);
         irrContainer.appendChild(btn);
@@ -190,7 +229,15 @@
         const btn = document.createElement('button');
         btn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2';
         btn.style.cssText = `background:${c};border-color:${c === strokeColor ? '#e0e7ff' : 'transparent'};`;
-        btn.onclick = () => { strokeColor = c; updateColorSelection(); };
+        btn.onclick = () => { 
+          strokeColor = c; 
+          updateColorSelection();
+          if (selectedShapeIndex !== -1) {
+            saveUndoState();
+            shapes[selectedShapeIndex].strokeColor = c;
+            redrawAll();
+          }
+        };
         strokeContainer.appendChild(btn);
       });
 
@@ -200,17 +247,34 @@
       trBtn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2 relative overflow-hidden';
       trBtn.style.cssText = `background:repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50%/10px 10px;border-color:${fillColor === 'transparent' ? '#e0e7ff' : 'transparent'};`;
       trBtn.title = 'Transparan';
-      trBtn.onclick = () => { fillColor = 'transparent'; updateColorSelection(); };
+      trBtn.onclick = () => { 
+        fillColor = 'transparent'; 
+        updateColorSelection();
+        if (selectedShapeIndex !== -1) {
+          saveUndoState();
+          shapes[selectedShapeIndex].fillColor = 'transparent';
+          redrawAll();
+        }
+      };
       fillContainer.appendChild(trBtn);
       colorPalette.forEach(c => {
         const btn = document.createElement('button');
         btn.className = 'w-6 h-6 md:w-7 md:h-7 rounded-full border-2';
         btn.style.cssText = `background:${c};border-color:${c === fillColor ? '#e0e7ff' : 'transparent'};`;
-        btn.onclick = () => { fillColor = c; updateColorSelection(); };
+        btn.onclick = () => { 
+          fillColor = c; 
+          updateColorSelection();
+          if (selectedShapeIndex !== -1) {
+            saveUndoState();
+            shapes[selectedShapeIndex].fillColor = c;
+            redrawAll();
+          }
+        };
         fillContainer.appendChild(btn);
       });
 
       lucide.createIcons();
+      selectTool('select', document.getElementById('tool-select'));
     }
 
     function updateColorSelection() {
@@ -225,9 +289,21 @@
       });
     }
 
+    function changeStrokeWidth(val) {
+      strokeWidth = +val;
+      if (selectedShapeIndex !== -1) {
+        saveUndoState();
+        shapes[selectedShapeIndex].strokeWidth = strokeWidth;
+        redrawAll();
+      }
+    }
+
     function selectTool(toolId, btn) {
       currentTool = toolId;
       polygonPoints = [];
+      selectedShapeIndex = -1; 
+      updateDeleteButton(); // Sembunyikan tombol hapus saat ganti alat
+      
       document.querySelectorAll('.shape-btn').forEach(b => {
         b.style.borderColor = 'transparent';
         b.style.background = '#334155';
@@ -242,7 +318,9 @@
         info.classList.add('hidden');
       }
 
-      const nameMap = {};
+      canvas.style.cursor = toolId === 'select' ? 'default' : 'crosshair';
+
+      const nameMap = { 'select': 'Pilih / Edit' };
       [...regularShapes, ...irregularShapes].forEach(s => nameMap[s.id] = s.name);
       showShapeInfo(nameMap[toolId] || toolId);
       redrawAll();
@@ -266,7 +344,7 @@
       });
     }
 
-    // ===== CANVAS =====
+    // ===== KANVAS & MENGGAMBAR =====
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
@@ -291,6 +369,23 @@
       };
     }
 
+    function getBBox(s) {
+      if (s.type === 'polygon') {
+        const minX = Math.min(...s.points.map(p=>p.x)), maxX = Math.max(...s.points.map(p=>p.x));
+        const minY = Math.min(...s.points.map(p=>p.y)), maxY = Math.max(...s.points.map(p=>p.y));
+        return { minX, minY, maxX, maxY, w: maxX-minX, h: maxY-minY };
+      } else {
+        return {
+          minX: s.sx, maxX: s.ex, minY: s.sy, maxY: s.ey,
+          w: s.ex - s.sx, h: s.ey - s.sy
+        };
+      }
+    }
+
+    function isPointInRect(pt, rect) {
+      return pt.x >= rect.x && pt.x <= rect.x + rect.w && pt.y >= rect.y && pt.y <= rect.y + rect.h;
+    }
+
     function drawGrid() {
       const w = canvas.width / window.devicePixelRatio;
       const h = canvas.height / window.devicePixelRatio;
@@ -311,27 +406,43 @@
       const h = canvas.height / window.devicePixelRatio;
       ctx.clearRect(0, 0, w, h);
       if (showGrid) drawGrid();
+      
       shapes.forEach(s => drawShape(s));
+      
       if (polygonPoints.length > 0) {
         ctx.save();
         ctx.fillStyle = '#6366f1';
         polygonPoints.forEach(p => {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.fill();
         });
         if (polygonPoints.length > 1) {
-          ctx.strokeStyle = '#6366f1';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
-          for (let i = 1; i < polygonPoints.length; i++) {
-            ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
-          }
+          ctx.strokeStyle = '#6366f1'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+          ctx.beginPath(); ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+          for (let i = 1; i < polygonPoints.length; i++) ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
           ctx.stroke();
-          ctx.setLineDash([]);
         }
+        ctx.restore();
+      }
+
+      if (selectedShapeIndex !== -1 && shapes[selectedShapeIndex]) {
+        const bbox = getBBox(shapes[selectedShapeIndex]);
+        ctx.save();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(bbox.minX, bbox.minY, bbox.w, bbox.h);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.setLineDash([]);
+        const hs = 4; 
+        const corners = [
+          [bbox.minX, bbox.minY], [bbox.maxX, bbox.minY],
+          [bbox.minX, bbox.maxY], [bbox.maxX, bbox.maxY]
+        ];
+        corners.forEach(([cx, cy]) => {
+          ctx.fillRect(cx - hs, cy - hs, hs*2, hs*2);
+          ctx.strokeRect(cx - hs, cy - hs, hs*2, hs*2);
+        });
         ctx.restore();
       }
     }
@@ -350,8 +461,7 @@
         const r = Math.sqrt((s.ex - s.sx) ** 2 + (s.ey - s.sy) ** 2) / 2;
         const cx = (s.sx + s.ex) / 2;
         const cy = (s.sy + s.ey) / 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
         if (s.fillColor !== 'transparent') ctx.fill();
         ctx.stroke();
         if (showLabels) drawLabel(cx, cy - r - 10, s.label || 'Lingkaran');
@@ -360,77 +470,47 @@
         const cy = (s.sy + s.ey) / 2;
         const rx = Math.abs(s.ex - s.sx) / 2;
         const ry = Math.abs(s.ey - s.sy) / 2;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
         if (s.fillColor !== 'transparent') ctx.fill();
         ctx.stroke();
         if (showLabels) drawLabel(cx, cy - ry - 10, s.label || 'Ellips');
       } else if (s.type === 'persegi') {
         const size = Math.max(Math.abs(s.ex - s.sx), Math.abs(s.ey - s.sy));
-        const x = s.sx;
-        const y = s.sy;
-        ctx.beginPath();
-        ctx.rect(x, y, size * Math.sign(s.ex - s.sx), size * Math.sign(s.ey - s.sy));
+        ctx.beginPath(); ctx.rect(s.sx, s.sy, size * Math.sign(s.ex - s.sx), size * Math.sign(s.ey - s.sy));
         if (s.fillColor !== 'transparent') ctx.fill();
         ctx.stroke();
-        if (showLabels) drawLabel(x + size * Math.sign(s.ex - s.sx) / 2, y - 10, 'Persegi');
+        if (showLabels) drawLabel(s.sx + size * Math.sign(s.ex - s.sx) / 2, s.sy - 10, 'Persegi');
       } else if (s.type === 'persegi_panjang') {
-        const w = s.ex - s.sx;
-        const h = s.ey - s.sy;
-        ctx.beginPath();
-        ctx.rect(s.sx, s.sy, w, h);
+        ctx.beginPath(); ctx.rect(s.sx, s.sy, s.ex - s.sx, s.ey - s.sy);
         if (s.fillColor !== 'transparent') ctx.fill();
         ctx.stroke();
-        if (showLabels) drawLabel(s.sx + w / 2, s.sy - 10, 'Persegi Panjang');
+        if (showLabels) drawLabel(s.sx + (s.ex - s.sx) / 2, s.sy - 10, 'Persegi Pjg');
       } else if (s.type === 'segitiga') {
         const cx = (s.sx + s.ex) / 2;
         const pts = regularPolygonPoints(cx, (s.sy + s.ey) / 2, Math.abs(s.ex - s.sx) / 2, 3, -Math.PI / 2);
         drawPoly(pts, s);
         if (showLabels) drawLabel(cx, Math.min(...pts.map(p => p.y)) - 10, 'Segitiga');
       } else if (s.type === 'jajar_genjang') {
-        const w = s.ex - s.sx;
-        const h = s.ey - s.sy;
-        const offset = w * 0.2;
-        const pts = [
-          { x: s.sx + offset, y: s.sy },
-          { x: s.ex, y: s.sy },
-          { x: s.ex - offset, y: s.ey },
-          { x: s.sx, y: s.ey }
-        ];
+        const w = s.ex - s.sx; const h = s.ey - s.sy; const offset = w * 0.2;
+        const pts = [{ x: s.sx + offset, y: s.sy }, { x: s.ex, y: s.sy }, { x: s.ex - offset, y: s.ey }, { x: s.sx, y: s.ey }];
         drawPoly(pts, s);
         if (showLabels) drawLabel((s.sx + s.ex) / 2, s.sy - 10, 'Jajar Genjang');
       } else if (s.type === 'belah_ketupat') {
-        const cx = (s.sx + s.ex) / 2;
-        const cy = (s.sy + s.ey) / 2;
-        const hw = Math.abs(s.ex - s.sx) / 2;
-        const hh = Math.abs(s.ey - s.sy) / 2;
-        const pts = [
-          { x: cx, y: cy - hh },
-          { x: cx + hw, y: cy },
-          { x: cx, y: cy + hh },
-          { x: cx - hw, y: cy }
-        ];
+        const cx = (s.sx + s.ex) / 2; const cy = (s.sy + s.ey) / 2;
+        const hw = Math.abs(s.ex - s.sx) / 2; const hh = Math.abs(s.ey - s.sy) / 2;
+        const pts = [{ x: cx, y: cy - hh }, { x: cx + hw, y: cy }, { x: cx, y: cy + hh }, { x: cx - hw, y: cy }];
         drawPoly(pts, s);
         if (showLabels) drawLabel(cx, cy - hh - 10, 'Belah Ketupat');
       } else if (s.type === 'trapesium') {
-        const w = s.ex - s.sx;
-        const h = s.ey - s.sy;
-        const topInset = Math.abs(w) * 0.2;
-        const pts = [
-          { x: s.sx + topInset, y: s.sy },
-          { x: s.ex - topInset, y: s.sy },
-          { x: s.ex, y: s.ey },
-          { x: s.sx, y: s.ey }
-        ];
+        const w = s.ex - s.sx; const h = s.ey - s.sy; const topInset = Math.abs(w) * 0.2;
+        const pts = [{ x: s.sx + topInset, y: s.sy }, { x: s.ex - topInset, y: s.sy }, { x: s.ex, y: s.ey }, { x: s.sx, y: s.ey }];
         drawPoly(pts, s);
         if (showLabels) drawLabel((s.sx + s.ex) / 2, s.sy - 10, 'Trapesium');
       } else if (['pentagon','hexagon','heptagon','octagon'].includes(s.type)) {
         const sidesMap = { pentagon: 5, hexagon: 6, heptagon: 7, octagon: 8 };
-        const n = sidesMap[s.type];
-        const cx = (s.sx + s.ex) / 2;
-        const cy = (s.sy + s.ey) / 2;
+        const cx = (s.sx + s.ex) / 2; const cy = (s.sy + s.ey) / 2;
         const r = Math.min(Math.abs(s.ex - s.sx), Math.abs(s.ey - s.sy)) / 2;
-        const pts = regularPolygonPoints(cx, cy, r, n, -Math.PI / 2);
+        const pts = regularPolygonPoints(cx, cy, r, sidesMap[s.type], -Math.PI / 2);
         drawPoly(pts, s);
         if (showLabels) drawLabel(cx, Math.min(...pts.map(p => p.y)) - 10, s.type.charAt(0).toUpperCase() + s.type.slice(1));
       } else if (s.type === 'polygon') {
@@ -446,8 +526,7 @@
 
     function drawPoly(pts, s) {
       if (pts.length < 2) return;
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.closePath();
       if (s.fillColor !== 'transparent') ctx.fill();
@@ -465,20 +544,17 @@
 
     function drawLabel(x, y, text) {
       ctx.save();
-      ctx.font = '600 10px Nunito, sans-serif'; // Mengecilkan font label sedikit agar rapi di HP
+      ctx.font = '600 10px Nunito, sans-serif'; 
       ctx.fillStyle = '#e0e7ff';
       ctx.textAlign = 'center';
       const tw = ctx.measureText(text).width;
       ctx.fillStyle = 'rgba(30,41,59,0.85)';
-      ctx.beginPath();
-      ctx.roundRect(x - tw / 2 - 6, y - 8, tw + 12, 16, 4);
-      ctx.fill();
-      ctx.fillStyle = '#e0e7ff';
-      ctx.fillText(text, x, y + 3);
+      ctx.beginPath(); ctx.roundRect(x - tw / 2 - 6, y - 8, tw + 12, 16, 4); ctx.fill();
+      ctx.fillStyle = '#e0e7ff'; ctx.fillText(text, x, y + 3);
       ctx.restore();
     }
 
-    // ===== EVENT HANDLERS =====
+    // ===== EVENT HANDLERS KANVAS =====
     function isIrregularTool() {
       return ['segitiga_bebas','segiempat_bebas','polygon_bebas'].includes(currentTool);
     }
@@ -491,68 +567,138 @@
     canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(e); }, { passive: false });
 
     function onStart(e) {
-      if (!currentTool) { showToast('Pilih bentuk terlebih dahulu!'); return; }
-      
       let pos = getPos(e);
-      pos = applySnap(pos); 
+      let snappedPos = applySnap(pos); 
+      
+      if (currentTool === 'select') {
+        if (selectedShapeIndex !== -1) {
+          const bbox = getBBox(shapes[selectedShapeIndex]);
+          const hs = 12; // area sentuh resize diperbesar untuk jari HP
+          const tl = {x: bbox.minX-hs/2, y: bbox.minY-hs/2, w: hs, h: hs};
+          const tr = {x: bbox.maxX-hs/2, y: bbox.minY-hs/2, w: hs, h: hs};
+          const bl = {x: bbox.minX-hs/2, y: bbox.maxY-hs/2, w: hs, h: hs};
+          const br = {x: bbox.maxX-hs/2, y: bbox.maxY-hs/2, w: hs, h: hs};
+          
+          if (isPointInRect(pos, tl)) interactAction = 'resize_tl';
+          else if (isPointInRect(pos, tr)) interactAction = 'resize_tr';
+          else if (isPointInRect(pos, bl)) interactAction = 'resize_bl';
+          else if (isPointInRect(pos, br)) interactAction = 'resize_br';
+        }
+
+        if (!interactAction) {
+          let clickedIdx = -1;
+          for (let i = shapes.length - 1; i >= 0; i--) {
+            const bbox = getBBox(shapes[i]);
+            // Toleransi klik di HP sedikit diperlebar (+5px)
+            if (pos.x >= bbox.minX-5 && pos.x <= bbox.maxX+5 && pos.y >= bbox.minY-5 && pos.y <= bbox.maxY+5) {
+              clickedIdx = i; break;
+            }
+          }
+          selectedShapeIndex = clickedIdx;
+          if (clickedIdx !== -1) interactAction = 'move';
+        }
+
+        if (interactAction) {
+          saveUndoState();
+          dragStartPos = pos; 
+          dragOrigShape = JSON.parse(JSON.stringify(shapes[selectedShapeIndex]));
+        }
+        
+        updateDeleteButton(); // Tampilkan/Sembunyikan tombol hapus
+        redrawAll();
+        return;
+      }
+
+      if (!currentTool) { showToast('Pilih alat terlebih dahulu!'); return; }
+      selectedShapeIndex = -1; 
+      updateDeleteButton();
 
       if (isIrregularTool()) {
         if (polygonPoints.length >= 3) {
-          const d = Math.sqrt((pos.x - polygonPoints[0].x) ** 2 + (pos.y - polygonPoints[0].y) ** 2);
-          if (d < 15) {
-            closePolygon();
-            return;
-          }
+          const d = Math.sqrt((snappedPos.x - polygonPoints[0].x) ** 2 + (snappedPos.y - polygonPoints[0].y) ** 2);
+          if (d < 20) { closePolygon(); return; }
         }
-
         const maxPts = currentTool === 'segitiga_bebas' ? 3 : currentTool === 'segiempat_bebas' ? 4 : 999;
         if (polygonPoints.length < maxPts) {
-          polygonPoints.push(pos);
-          redrawAll();
-          if (polygonPoints.length === maxPts && currentTool !== 'polygon_bebas') {
-            closePolygon();
-          }
+          polygonPoints.push(snappedPos); redrawAll();
+          if (polygonPoints.length === maxPts && currentTool !== 'polygon_bebas') closePolygon();
         }
         return;
       }
 
       isDrawing = true;
-      startX = pos.x;
-      startY = pos.y;
+      startX = snappedPos.x; startY = snappedPos.y;
     }
 
     function onMove(e) {
-      if (!isDrawing || isIrregularTool()) return;
-      
       let pos = getPos(e);
-      pos = applySnap(pos); 
+      let snappedPos = applySnap(pos); 
 
+      if (currentTool === 'select' && interactAction && selectedShapeIndex !== -1) {
+        const dx = pos.x - dragStartPos.x;
+        const dy = pos.y - dragStartPos.y;
+        const s = shapes[selectedShapeIndex];
+
+        if (interactAction === 'move') {
+          if (s.type === 'polygon') {
+            s.points = dragOrigShape.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+          } else {
+            s.sx = dragOrigShape.sx + dx; s.sy = dragOrigShape.sy + dy;
+            s.ex = dragOrigShape.ex + dx; s.ey = dragOrigShape.ey + dy;
+          }
+        } else {
+          const origBBox = getBBox(dragOrigShape);
+          let newMinX = origBBox.minX, newMaxX = origBBox.maxX;
+          let newMinY = origBBox.minY, newMaxY = origBBox.maxY;
+
+          if (interactAction.includes('l')) newMinX += dx;
+          if (interactAction.includes('r')) newMaxX += dx;
+          if (interactAction.includes('t')) newMinY += dy;
+          if (interactAction.includes('b')) newMaxY += dy;
+
+          if (newMaxX - newMinX < 10) { if (interactAction.includes('l')) newMinX = newMaxX - 10; else newMaxX = newMinX + 10; }
+          if (newMaxY - newMinY < 10) { if (interactAction.includes('t')) newMinY = newMaxY - 10; else newMaxY = newMinY + 10; }
+
+          if (s.type === 'polygon') {
+            const scaleX = (newMaxX - newMinX) / origBBox.w;
+            const scaleY = (newMaxY - newMinY) / origBBox.h;
+            s.points = dragOrigShape.points.map(p => ({
+              x: newMinX + (p.x - origBBox.minX) * scaleX,
+              y: newMinY + (p.y - origBBox.minY) * scaleY
+            }));
+          } else {
+            s.sx = newMinX; s.ex = newMaxX; s.sy = newMinY; s.ey = newMaxY;
+          }
+        }
+        redrawAll();
+        return;
+      }
+
+      if (!isDrawing || isIrregularTool()) return;
       redrawAll();
-      const preview = {
-        type: currentTool,
-        sx: startX, sy: startY,
-        ex: pos.x, ey: pos.y,
-        strokeColor, fillColor, strokeWidth
-      };
+      const preview = { type: currentTool, sx: startX, sy: startY, ex: snappedPos.x, ey: snappedPos.y, strokeColor, fillColor, strokeWidth };
       drawShape(preview);
     }
 
     function onEnd(e) {
+      if (currentTool === 'select') { interactAction = null; return; }
+      
       if (!isDrawing || isIrregularTool()) return;
       isDrawing = false;
       
       let pos = getPos(e.changedTouches ? e.changedTouches[0] : e);
-      pos = applySnap(pos); 
+      let snappedPos = applySnap(pos); 
+      if (Math.abs(snappedPos.x - startX) < 5 && Math.abs(snappedPos.y - startY) < 5) return;
 
-      if (Math.abs(pos.x - startX) < 5 && Math.abs(pos.y - startY) < 5) return;
+      const finalMinX = Math.min(startX, snappedPos.x); const finalMaxX = Math.max(startX, snappedPos.x);
+      const finalMinY = Math.min(startY, snappedPos.y); const finalMaxY = Math.max(startY, snappedPos.y);
 
       const shape = {
         type: currentTool,
-        sx: startX, sy: startY,
-        ex: pos.x, ey: pos.y,
+        sx: finalMinX, sy: finalMinY, ex: finalMaxX, ey: finalMaxY,
         strokeColor, fillColor, strokeWidth
       };
-      undoStack.push([...shapes]);
+      saveUndoState();
       shapes.push(shape);
       redrawAll();
     }
@@ -560,25 +706,24 @@
     function closePolygon() {
       if (polygonPoints.length < 3) return;
       const labelMap = { segitiga_bebas: 'Segitiga Bebas', segiempat_bebas: 'Segi Empat Bebas', polygon_bebas: 'Polygon Bebas' };
-      const shape = {
-        type: 'polygon',
-        points: [...polygonPoints],
-        strokeColor, fillColor, strokeWidth,
-        label: labelMap[currentTool] || 'Polygon'
-      };
-      undoStack.push([...shapes]);
-      shapes.push(shape);
+      saveUndoState();
+      shapes.push({
+        type: 'polygon', points: [...polygonPoints],
+        strokeColor, fillColor, strokeWidth, label: labelMap[currentTool] || 'Polygon'
+      });
       polygonPoints = [];
       redrawAll();
     }
 
     document.addEventListener('keydown', e => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && currentTool === 'select' && selectedShapeIndex !== -1) {
+        deleteSelected();
+      }
       if (e.key === 'Enter' && isIrregularTool() && polygonPoints.length >= 3) {
         closePolygon();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        undoAction();
+        e.preventDefault(); undoAction();
       }
     });
 
@@ -586,6 +731,8 @@
       if (undoStack.length > 0) {
         shapes = undoStack.pop();
         polygonPoints = [];
+        selectedShapeIndex = -1;
+        updateDeleteButton();
         redrawAll();
         showToast('Undo berhasil');
       }
@@ -593,9 +740,9 @@
 
     function clearCanvas() {
       if (shapes.length === 0) return;
-      undoStack.push([...shapes]);
-      shapes = [];
-      polygonPoints = [];
+      saveUndoState();
+      shapes = []; polygonPoints = []; selectedShapeIndex = -1;
+      updateDeleteButton();
       redrawAll();
       showToast('Kanvas dibersihkan');
     }
@@ -614,7 +761,7 @@
       el.classList.remove('hidden');
     }
 
-    // Init
+    canvas.focus();
     buildUI();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
